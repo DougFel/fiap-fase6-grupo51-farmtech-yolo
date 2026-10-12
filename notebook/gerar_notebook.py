@@ -15,6 +15,8 @@ from pathlib import Path
 
 import nbformat as nbf
 
+from textos_analise import AVALIACAO_CRITICA, CONCLUSOES_ENTREGA1, FECHAMENTO
+
 AQUI = Path(__file__).resolve().parent
 NOME = "DouglasFelicioDaSilva_rm572312_pbl_fase6.ipynb"
 REPO = "https://github.com/DougFel/fiap-fase6-grupo51-farmtech-yolo"
@@ -477,11 +479,7 @@ comparacao_epocas = pd.DataFrame(linhas).set_index('simulação')
 display(comparacao_epocas.round(3).T)
 comparacao_epocas.to_csv(RESULTADOS / 'comparacao_30x60.csv')
 """))
-    c.append(md("""
-### Conclusões da Entrega 1
-
-<!-- CONCLUSOES_ENTREGA1 -->
-"""))
+    c.append(md("### Conclusões da Entrega 1\n\n" + CONCLUSOES_ENTREGA1))
 
     # ---------------------------------------------------------- Entrega 2
     c.append(md("""
@@ -747,11 +745,7 @@ a3.bar(rotulos, final['inferência (ms/img)'], color=cores); a3.set_title('Tempo
 for ax in (a1, a2, a3): ax.tick_params(axis='x', labelsize=8); ax.grid(axis='y', alpha=.3)
 plt.tight_layout(); plt.savefig(RESULTADOS / 'comparacao_final.png', dpi=120); mostrar(fig)
 """))
-    c.append(md("""
-### Avaliação crítica
-
-<!-- AVALIACAO_CRITICA -->
-"""))
+    c.append(md("### Avaliação crítica\n\n" + AVALIACAO_CRITICA))
 
     # ------------------------------------------------------- 10. salvar
     c.append(md("""
@@ -775,9 +769,7 @@ print('\\n'.join(sorted(str(p.relative_to(PROJETO)) for p in RESULTADOS.rglob('*
     # ------------------------------------------------------- 11. fechamento
     c.append(md("""
 ## 11. Pontos fortes, limitações e próximos passos
-
-<!-- FECHAMENTO -->
-
+""" + FECHAMENTO + """
 ---
 **Referências**
 

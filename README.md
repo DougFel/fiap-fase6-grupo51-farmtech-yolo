@@ -49,7 +49,46 @@ O notebook traz o passo a passo das três etapas (treino, validação e teste), 
 gráficos, as tabelas e a análise crítica. Este README só apresenta o projeto e
 aponta o caminho.
 
-<!-- RESULTADOS -->
+### Resultados em uma página
+
+**Entrega 1 — YOLOv5 customizado** (Colab, GPU Tesla T4). Com 60 épocas o
+modelo foi melhor em todas as medidas de teste; a perda de validação ainda caía
+aos 60, sem sinal de overfitting.
+
+| Teste (8 imagens) | 30 épocas | 60 épocas |
+|---|---|---|
+| mAP@0.5 | 0,739 | **0,811** |
+| mAP@0.5:0.95 | 0,439 | **0,569** |
+| Precisão / Recall | 0,611 / 0,827 | **0,789** / 0,750 |
+| Tempo de treino | 2,6 min | 2,2 min |
+
+<p align="center"><img src="assets/teste_yolo_60ep.png" alt="Imagens de teste processadas pelo YOLOv5 customizado (60 épocas)" width="95%"></p>
+
+*Imagens de teste processadas pelo modelo de 60 épocas (`runs/detect/exp2`). Ele
+acerta as fotos com um animal e todas as maçãs; o ponto fraco é o rebanho
+(`gado_test_04`), pouco representado na base.*
+
+**Entrega 2 — comparação nas mesmas 8 imagens de teste**
+
+| Abordagem | mAP@0.5 | Acurácia (imagem) | Treino | Inferência |
+|---|---|---|---|---|
+| A · YOLOv5 customizado (60 épocas) | **0,798** | 87,5% | ~2 min | ~21 ms |
+| B · YOLO tradicional (COCO) | 0,665 | 87,5% | nenhum | ~21 ms |
+| C · CNN treinada do zero | — (não localiza) | **100%** | ~30 s | ~13 ms |
+
+O ajuste fino com 64 fotos rendeu **13 pontos de mAP** sobre o modelo pronto; a
+CNN acerta todas as classificações, mas não diz onde está o objeto. A análise
+completa — e por que o COCO ainda é melhor em rebanho — está no notebook.
+
+<p align="center"><img src="assets/comparacao_final.png" alt="Comparação das três abordagens" width="95%"></p>
+
+### 🏷️ Rotulagem no Make Sense
+
+<p align="center"><img src="assets/makesense_rotulagem_gado.png" alt="Projeto farmtech-gado-maca no Make Sense" width="85%"></p>
+
+*As 80 imagens foram rotuladas no [Make Sense](https://www.makesense.ai) (101
+caixas, classes `gado` e `maca`) e exportadas em formato YOLO; o pacote original
+está em [`dataset/makesense/`](dataset/makesense/).*
 
 ---
 
@@ -60,7 +99,8 @@ aponta o caminho.
 ├── README.md
 ├── notebook/
 │   ├── DouglasFelicioDaSilva_rm572312_pbl_fase6.ipynb   relatório completo (executado no Colab)
-│   └── gerar_notebook.py                                fonte do notebook (texto e código versionados)
+│   ├── gerar_notebook.py                                fonte do notebook (texto e código versionados)
+│   └── textos_analise.py                                conclusões e análise crítica do notebook
 ├── dataset/
 │   ├── images/{train,val,test}/     80 imagens: 32/4/4 de cada classe
 │   ├── labels/{train,val,test}/     rótulos YOLO desenhados no Make Sense
@@ -69,8 +109,8 @@ aponta o caminho.
 ├── scripts/
 │   ├── montar_dataset.py            reconstrói a base a partir do Open Images V7
 │   └── selecao_curada.csv           as 80 imagens escolhidas na curadoria visual
-├── assets/                          logo e figuras deste README
-└── video/                           roteiro e produção do vídeo
+├── assets/                          logo e figuras deste README (prints do teste, Make Sense)
+└── video/                           roteiro, narração e montagem do vídeo
 ```
 
 ## 🔧 Como executar o código

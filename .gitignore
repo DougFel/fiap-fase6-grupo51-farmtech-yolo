@@ -23,3 +23,8 @@ CONFERENCIA.md
 
 # macOS
 .DS_Store
+
+# arquivos de trabalho do vídeo (gerados a partir do notebook)
+video/pagina_video.html
+video/prints/
+video/.entrega.html
