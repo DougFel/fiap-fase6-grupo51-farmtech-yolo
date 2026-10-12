@@ -194,10 +194,19 @@ modelo aprende e repete.
     c.append(py("""
 import numpy as np                                          # vetores e estatísticas
 import pandas as pd                                         # tabelas
-import matplotlib.pyplot as plt                             # gráficos (exibidos com display(fig): o YOLOv5
-                                                            # troca o backend do matplotlib ao ser importado)
+import io                                                   # buffer em memória para as figuras
+import matplotlib.pyplot as plt                             # gráficos
 import matplotlib.patches as patches                        # retângulos sobre as imagens
 from PIL import Image                                       # leitura de imagens
+
+from IPython.display import Image as ImagemPNG
+
+def mostrar(fig, dpi=100):
+    \"\"\"Exibe a figura como PNG. Independe do backend: o YOLOv5 troca o do matplotlib para 'Agg' ao ser importado.\"\"\"
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=dpi, bbox_inches='tight')
+    plt.close(fig)
+    display(ImagemPNG(buf.getvalue()))
 
 NOMES = {0: 'gado', 1: 'maca'}                              # mesma ordem dos rótulos no Make Sense
 CORES = {0: '#e4572e', 1: '#2e86ab'}                        # uma cor por classe
@@ -223,7 +232,7 @@ for ax, nome in zip(eixos.ravel(), amostra):
     p = DATASET / 'images' / 'train' / nome
     desenhar(ax, p, ler_rotulos(DATASET / 'labels' / 'train' / p.with_suffix('.txt').name), nome)
 plt.suptitle('Rótulos feitos no Make Sense (amostra do treino)', fontsize=13)
-plt.tight_layout(); display(fig); plt.close(fig)
+plt.tight_layout(); mostrar(fig)
 """))
     c.append(py("""
 # Estatísticas da base: objetos por imagem e tamanho das caixas (fração da área da imagem)
@@ -367,7 +376,7 @@ for ax, (col1, col2, titulo) in zip(eixos.ravel(), graficos):
         if col2:
             ax.plot(df.epoch + 1, df[col2], color=cor, ls='--', label=f'{nome} — validação' if 'loss' in col2 else None)
     ax.set_title(titulo); ax.set_xlabel('época'); ax.grid(alpha=.3); ax.legend(fontsize=8)
-plt.tight_layout(); plt.savefig(RESULTADOS / 'curvas_treino.png', dpi=120); display(fig); plt.close(fig)
+plt.tight_layout(); plt.savefig(RESULTADOS / 'curvas_treino.png', dpi=120); mostrar(fig)
 """))
     c.append(md("""
 **Como ler as curvas.** As linhas cheias de perda caindo mostram que a rede está
@@ -434,7 +443,7 @@ def galeria(pasta, titulo):
     for ax, p in zip(eixos.ravel(), imagens):
         ax.imshow(Image.open(p)); ax.set_axis_off(); ax.set_title(p.name, fontsize=9)
     plt.suptitle(titulo, fontsize=14); plt.tight_layout()
-    plt.savefig(RESULTADOS / f'teste_{pasta.name}.jpg', dpi=110); display(fig); plt.close(fig)
+    plt.savefig(RESULTADOS / f'teste_{pasta.name}.jpg', dpi=110); mostrar(fig)
 
 for nome, pasta in pastas_detect.items():
     galeria(pasta, f'Imagens de teste processadas — YOLOv5 customizado, {nome} ({pasta.name})')
@@ -694,7 +703,7 @@ for chave, rot in (('accuracy', 'treino'), ('val_accuracy', 'validação')):
     a2.plot(hist_cnn.history[chave], label=rot)
 a1.set_title('CNN do zero — perda'); a2.set_title('CNN do zero — acurácia')
 for ax in (a1, a2): ax.set_xlabel('época'); ax.legend(); ax.grid(alpha=.3)
-plt.tight_layout(); plt.savefig(RESULTADOS / 'cnn_curvas.png', dpi=120); display(fig); plt.close(fig)
+plt.tight_layout(); plt.savefig(RESULTADOS / 'cnn_curvas.png', dpi=120); mostrar(fig)
 """))
     c.append(py("""
 prever = lambda X: cnn(X, training=False).numpy().ravel()  # chamada direta: sem o overhead do predict() por lote
@@ -736,7 +745,7 @@ a1.bar(rotulos, final['acurácia (imagem)'], color=cores); a1.set_ylim(0, 1.05);
 a2.bar(rotulos, final['tempo de treino (s)'] / 60, color=cores); a2.set_title('Tempo de treino (min)')
 a3.bar(rotulos, final['inferência (ms/img)'], color=cores); a3.set_title('Tempo de inferência (ms por imagem)')
 for ax in (a1, a2, a3): ax.tick_params(axis='x', labelsize=8); ax.grid(axis='y', alpha=.3)
-plt.tight_layout(); plt.savefig(RESULTADOS / 'comparacao_final.png', dpi=120); display(fig); plt.close(fig)
+plt.tight_layout(); plt.savefig(RESULTADOS / 'comparacao_final.png', dpi=120); mostrar(fig)
 """))
     c.append(md("""
 ### Avaliação crítica
