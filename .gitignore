@@ -1,0 +1,25 @@
+# ambiente
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# área de trabalho local: anotações de referência do Open Images, clone do
+# YOLOv5, execuções de teste e o "Drive" simulado da execução fora do Colab
+_trabalho/
+drive_local/
+
+# versão de fumaça do notebook (só para teste local; a entrega é o notebook principal)
+notebook/rapido_*.ipynb
+
+# vídeos vão para o YouTube, não para o repositório
+*.mp4
+*.webm
+video/.trabalho/
+video/captura/
+
+# conferência interna do grupo
+CONFERENCIA.md
+
+# macOS
+.DS_Store
