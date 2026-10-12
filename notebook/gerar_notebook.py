@@ -4,7 +4,7 @@ Monta o notebook da entrega (Colab) a partir de blocos de markdown e código.
 O notebook é escrito aqui, e não editado à mão no Colab, para que o texto e o
 código fiquem versionados e revisáveis. Uso:
 
-    python gerar_notebook.py            # notebook da entrega (30 e 60 épocas)
+    python gerar_notebook.py            # notebook sem saídas em notebook/gerado/ (para executar no Colab)
     python gerar_notebook.py --rapido   # versão de fumaça para testar localmente
 
 A versão --rapido troca apenas os hiperparâmetros de duração (épocas e tamanho de
@@ -62,8 +62,8 @@ sistema de visão computacional reconhece objetos no campo — e com que confian
 
 | Parte | Conteúdo | Seções |
 |---|---|---|
-| **Entrega 1** | YOLOv5 customizado para dois objetos (gado e maçã), treinado com **30** e **60** épocas, validado e testado | 1 a 6 |
-| **Entrega 2** | Comparação com a **YOLO tradicional** (pré-treinada no COCO) e com uma **CNN treinada do zero** | 7 a 10 |
+| **Entrega 1** | YOLOv5 customizado para dois objetos (gado e maçã), treinado com **30** e **60** épocas, validado e testado | 1 a 5 |
+| **Entrega 2** | Comparação com a **YOLO tradicional** (pré-treinada no COCO) e com uma **CNN treinada do zero** | 6 a 10 |
 | Fechamento | Pontos fortes, limitações e próximos passos | 11 |
 
 > **Como executar:** `Ambiente de execução → Alterar o tipo de ambiente → GPU (T4)`
@@ -484,7 +484,7 @@ comparacao_epocas.to_csv(RESULTADOS / 'comparacao_30x60.csv')
     # ---------------------------------------------------------- Entrega 2
     c.append(md("""
 ---
-# Entrega 2 — A YOLO customizada contra as alternativas
+# 6. Entrega 2 — A YOLO customizada contra as alternativas
 
 Avaliamos três abordagens sobre **a mesma base de teste** (as 8 imagens que
 nenhum modelo usou para aprender):
@@ -794,7 +794,9 @@ def main() -> None:
         "accelerator": "GPU",
         "colab": {"provenance": [], "gpuType": "T4"},
     }
-    destino = AQUI / (("rapido_" + NOME) if args.rapido else NOME)
+    # grava fora do notebook de entrega, que é a versão executada no Colab
+    destino = AQUI / "gerado" / (("rapido_" + NOME) if args.rapido else NOME)
+    destino.parent.mkdir(exist_ok=True)
     nbf.write(nb, destino)
     print(f"{destino.name}: {len(nb.cells)} células")
 
