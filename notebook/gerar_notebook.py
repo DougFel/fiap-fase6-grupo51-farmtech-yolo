@@ -32,7 +32,7 @@ def py(texto: str):
 def celulas(rapido: bool) -> list:
     ep_a, ep_b = (1, 2) if rapido else (30, 60)
     img = 320 if rapido else 640
-    ep_cnn = 3 if rapido else 80
+    ep_cnn = 3 if rapido else 150
     c = []
 
     # ------------------------------------------------------------------ capa
@@ -97,6 +97,10 @@ tortas e fatias — ficamos só com gado bovino doméstico e maçãs inteiras.
 **Rotulagem.** As caixas foram desenhadas no **Make Sense** (makesense.ai), uma
 caixa por objeto, e exportadas em formato YOLO (um `.txt` por imagem). O pacote
 original exportado está em `dataset/makesense/` e as caixas, em `dataset/labels/`.
+
+![Rotulagem no Make Sense](https://raw.githubusercontent.com/DougFel/fiap-fase6-grupo51-farmtech-yolo/main/assets/makesense_rotulagem_gado.png)
+*Projeto `farmtech-gado-maca` no Make Sense: as 80 imagens carregadas (✓ = rotulada) e duas
+vacas marcadas com a classe `gado`.*
 """))
 
     # ------------------------------------------------------------ 2. ambiente
@@ -112,6 +116,7 @@ import os, sys, time, json, shutil, subprocess, random      # utilitários da bi
 from pathlib import Path                                   # caminhos independentes de sistema operacional
 
 EM_COLAB = 'google.colab' in sys.modules                   # True quando o notebook roda no Colab
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'                   # silencia avisos do TensorFlow (também nos subprocessos)
 
 if EM_COLAB:
     from google.colab import drive                         # integração oficial do Colab com o Drive
@@ -301,8 +306,9 @@ def rodar(cmd, cwd=YOLO_DIR, linhas_finais=12):
     \"\"\"Executa um script do YOLOv5, mostra o fim da saída e devolve o tempo gasto (s).\"\"\"
     inicio = time.time()
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
-    saida = (proc.stdout + proc.stderr).splitlines()
-    print('\\n'.join(l for l in saida[-linhas_finais:] if l.strip()))
+    ruido = ('absl', 'cudart_stub', 'cuda drivers', 'B/s]', 'it/s]', 'Downloading')  # avisos e barras de download
+    saida = [l for l in (proc.stdout + proc.stderr).splitlines() if l.strip() and not any(r in l for r in ruido)]
+    print('\\n'.join(saida[-linhas_finais:]))
     if proc.returncode != 0:
         raise RuntimeError('falhou: ' + ' '.join(map(str, cmd)))
     return time.time() - inicio
@@ -395,6 +401,7 @@ def avaliar(nome, etapa):
     return {'simulação': nome, 'base': etapa, 'precisão': p, 'recall': r, 'mAP@0.5': map50,
             'mAP@0.5:0.95': map5095, 'inferência (ms/img)': tempos[1]}
 
+avaliar(next(iter(EXPERIMENTOS)), 'val')                  # aquecimento da GPU: a 1ª chamada carrega kernels CUDA e distorce o tempo
 metricas = pd.DataFrame([avaliar(nome, etapa) for nome in EXPERIMENTOS for etapa in ('val', 'test')])
 display(metricas.round(3))
 """))
@@ -606,11 +613,27 @@ Uma rede convolucional pequena, sem nenhum peso pré-treinado, que recebe a
 imagem inteira e responde **gado** ou **maçã**. Ela usa exatamente as mesmas
 divisões de treino, validação e teste.
 
-Arquitetura (capítulo 9): três blocos **convolução + max pooling** extraem
+Arquitetura (capítulo 9): três blocos **convolução + ReLU + max pooling** extraem
 características; *Global Average Pooling* e *Dropout* reduzem parâmetros e
 overfitting; uma saída **sigmoide** dá a probabilidade de "maçã". Com só 64
 imagens de treino, usamos **aumento de dados** (espelhamento, rotação, zoom e
-contraste) e *early stopping* na perda de validação.
+contraste), *early stopping* na perda de validação e redução da taxa de
+aprendizado quando a perda estabiliza.
+
+**Como escolhemos a configuração — sem olhar o teste.** A primeira versão (160 px,
+com *Batch Normalization* e paciência 15) ficava presa em ~50% de acerto: com
+lotes de 16 imagens e só 64 exemplos, as estatísticas da normalização oscilam e o
+*early stopping* devolvia os pesos das primeiras épocas. Comparamos variações
+**usando apenas treino e validação**, com duas sementes aleatórias:
+
+| Configuração | Validação (semente 42) | Validação (semente 7) |
+|---|---|---|
+| 160 px, BatchNorm, paciência 15 | 62% — não aprendeu | 50% — não aprendeu |
+| 128 px, BatchNorm, paciência 40 | 100% | 50% — não aprendeu |
+| **128 px, sem BatchNorm, paciência 40** | **100%** | **100%** |
+
+Ficamos com a única configuração estável nas duas sementes. O teste só é usado
+depois, uma vez, para medir o resultado.
 """))
     c.append(py(f"""
 import tensorflow as tf                                     # Keras (TensorFlow) para a CNN
@@ -619,7 +642,7 @@ from tensorflow.keras import layers
 
 SEMENTE = 42
 random.seed(SEMENTE); np.random.seed(SEMENTE); tf.random.set_seed(SEMENTE)   # reprodutibilidade
-LADO = 160                                                  # imagens redimensionadas para 160x160
+LADO = 128                                                  # imagens redimensionadas para 128x128
 
 def carregar(etapa):
     \"\"\"Lê as imagens de uma etapa e devolve (X, y), com y = 0 para gado e 1 para maçã.\"\"\"
@@ -635,10 +658,8 @@ aumento = keras.Sequential([layers.RandomFlip('horizontal'), layers.RandomRotati
                             layers.RandomZoom(0.15), layers.RandomContrast(0.2)], name='aumento')
 
 def bloco(x, filtros):
-    \"\"\"Convolução 3x3 + normalização + ReLU + max pooling 2x2.\"\"\"
-    x = layers.Conv2D(filtros, 3, padding='same', use_bias=False)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('relu')(x)
+    \"\"\"Convolução 3x3 + ReLU + max pooling 2x2 (sem BatchNorm: instável com só 64 imagens).\"\"\"
+    x = layers.Conv2D(filtros, 3, padding='same', activation='relu')(x)
     return layers.MaxPooling2D()(x)
 
 entrada = keras.Input((LADO, LADO, 3))
@@ -647,17 +668,18 @@ x = layers.Rescaling(1 / 255)(x)                            # pixels 0-255 → 0
 for filtros in (32, 64, 128):
     x = bloco(x, filtros)
 x = layers.GlobalAveragePooling2D()(x)
-x = layers.Dropout(0.4)(x)
+x = layers.Dropout(0.3)(x)
 saida = layers.Dense(1, activation='sigmoid')(x)            # probabilidade de ser maçã
 cnn = keras.Model(entrada, saida, name='cnn_do_zero')
 cnn.compile(optimizer=keras.optimizers.Adam(1e-3), loss='binary_crossentropy', metrics=['accuracy'])
 cnn.summary()
 """))
     c.append(py(f"""
-parada = keras.callbacks.EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
+callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss', patience=40, restore_best_weights=True),  # para quando a validação não melhora
+             keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=10, min_lr=1e-5)]   # passos menores no platô
 t0 = time.time()
 hist_cnn = cnn.fit(X_tr, y_tr, validation_data=(X_va, y_va), epochs={ep_cnn}, batch_size=16,
-                   callbacks=[parada], verbose=0)
+                   callbacks=callbacks, verbose=0)
 tempo_cnn = time.time() - t0
 print(f'Treino: {{len(hist_cnn.history["loss"])}} épocas em {{tempo_cnn:.1f}} s '
       f'(melhor época pela validação: {{int(np.argmin(hist_cnn.history["val_loss"])) + 1}})')
@@ -672,15 +694,16 @@ for ax in (a1, a2): ax.set_xlabel('época'); ax.legend(); ax.grid(alpha=.3)
 plt.tight_layout(); plt.savefig(RESULTADOS / 'cnn_curvas.png', dpi=120); plt.show()
 """))
     c.append(py("""
-cnn.predict(X_te[:1], verbose=0)                            # aquecimento
+prever = lambda X: cnn(X, training=False).numpy().ravel()  # chamada direta: sem o overhead do predict() por lote
+prever(X_te[:1])                                            # aquecimento
 tempos_cnn = []
 for i in range(len(X_te)):                                  # uma imagem por vez, como numa câmera
-    t0 = time.perf_counter(); cnn.predict(X_te[i:i + 1], verbose=0); tempos_cnn.append((time.perf_counter() - t0) * 1000)
-prob = cnn.predict(X_te, verbose=0).ravel()
+    t0 = time.perf_counter(); prever(X_te[i:i + 1]); tempos_cnn.append((time.perf_counter() - t0) * 1000)
+prob = prever(X_te)                                         # probabilidade de ser maçã
 pred = (prob >= 0.5).astype(int)
 
 acuracia_cnn = float((pred == y_te).mean())
-acuracia_cnn_val = float(((cnn.predict(X_va, verbose=0).ravel() >= 0.5).astype(int) == y_va).mean())
+acuracia_cnn_val = float(((prever(X_va) >= 0.5).astype(int) == y_va).mean())
 print(f'Acurácia — validação: {acuracia_cnn_val:.0%} | teste: {acuracia_cnn:.0%}')
 display(pd.DataFrame({'imagem': nomes_te, 'real': [NOMES[v] for v in y_te],
                       'prevista': [NOMES[v] for v in pred], 'P(maçã)': prob.round(3)}))
