@@ -43,7 +43,7 @@ com duas alternativas: a **YOLO tradicional** (pesos do COCO, sem treino) e uma
 |---|---|
 | **Notebook (GitHub)** | [`notebook/DouglasFelicioDaSilva_rm572312_pbl_fase6.ipynb`](notebook/DouglasFelicioDaSilva_rm572312_pbl_fase6.ipynb) |
 | **Abrir no Colab** | [![Abrir no Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DougFel/fiap-fase6-grupo51-farmtech-yolo/blob/main/notebook/DouglasFelicioDaSilva_rm572312_pbl_fase6.ipynb) |
-| **Vídeo de demonstração** | <!-- VIDEO --> |
+| **Vídeo de demonstração** (YouTube, não listado, 4min46s) | [https://youtu.be/-FiXO2K4xeA](https://youtu.be/-FiXO2K4xeA) |
 
 O notebook traz o passo a passo das três etapas (treino, validação e teste), os
 gráficos, as tabelas e a análise crítica. Este README só apresenta o projeto e
